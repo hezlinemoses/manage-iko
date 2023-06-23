@@ -1,0 +1,34 @@
+apiVersion: skaffold/v4beta5
+kind: Config
+metadata:
+  name: skaffold-test
+build:
+  local:
+    push: false
+  artifacts:
+    - image: react-frontend
+      context: react-frontend
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: 'remix-app/app/**/*'
+            dest: /remix-app/app
+            strip: 'remix-app/app'
+    - image: auth-service-img
+      context: authservice
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: 'accounts**/*.py'
+            dest: .
+    # - image: auth-celery
+    #   context: authservice
+    #   docker:
+    #     dockerfile: celery.dockerfile
+manifests:
+  rawYaml:
+    - infra/k8s/react.yaml
+    - infra/k8s/authservice.yaml
+    - infra/k8s/ingress-rule.yaml

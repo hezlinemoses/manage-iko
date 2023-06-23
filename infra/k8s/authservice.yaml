@@ -1,0 +1,60 @@
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: authspace create manually using kubectl since secrets are managed there
+# ---
+# ---
+apiVersion: v1
+data:
+  accesskey: bk1JSUVvKSgmKHdJQkFBS0NBUUVBeU55dzk3YWRJOCopKl8pKF9eJiomJSZeTEdpcS9CSGMzUkd3eWJhK3MwQndwU3NTeGNJYUswUC9kV0pNY28KRDB4NGdZVit4ODMrcjV2VHpHZStWU0ZRVXlaeFFVRjRXZUNwbmF3NjFrWmpsRFM1NXFQeDcrVzdJVCtNY0dvcQorLzUwZEZPREo3TURoQ0JXcUVCUFlXS2NiOE1QMFdXZkxvaGw3NXFGQ05GTFh4blVuUEVMaTlmR1UvUXNvUnMvCnVjM0pNMmJKZXNmREtaMU5KUkRkSUY1bktCZGVrNG5rTHhtK0o2dm5uNXZNcHNzUER1clR3dGxBallOYmhwK0UKakVNTVBVZlhRME91MFlpZUl6ZkNSWVBRYVNCdll1RGNTalhUMkowOE5LS3gwQ2xxRjNwZExXOEFtVkxUKiYlKl9DeFVWCnNvaW42R1NhMFpYbHlPM2JKWEFTU2JLS25RWkR6UmNNQm1mKiUmJSoqJl5tWHdJREFRQUJBb0lCQUF1NWdpVDdobUdyZ1c1ZwpBdnhMNHN4YTZJbWNvWjFWbDIwYkkwZWRXVHN3bzFralBPM2pyMWNVSlVuaGR0L21UeThyMFJya0JtM01IU2xMCmVveDRoajRiYXhYTjV3c2tKc1BWUnc2VFVPQ0lkcGlyUWRZ
+  refreshkey: CmRCYjJRSGtDZ1lFQStkeGRldEg2NzQmJF5eKmZtQnV4VXY3K1grL3NlWER0bk56dFFqNEZYYXJrVkp5TlpYYXJOZUQ5QWkrCm5kYUg4MWVYZ1ZSZS92SDF0MVZpc2ZlRW1uejRPWGFFN0MwenBDYzdrcWswSUpHNGp0VVhWN2ZVZk4oKl5XOW5zZm4KQ3ZwNVVERCtsZ0swOHRCQzRaYmlGUkZOUmczLzBhdXoxbDBPaEN5RHlpUjkrL1d0NllDek41Y0NnWUVBemN3ZgpRY0wvd0p4OU8ydFJVTTBrelVDQUNnUDlURk8rbGtpOTlNZER2eTAxeExBT3JPJUBeJFpHS0l1Y0FVMFN4S2p6QzFwRgpMbHVDcndLOW1DZUxXT0U1bkxGUytqNDJxQlNONmhQcWlxKSNAJVhYZnhpRmFHdlNkRUdRVE4xSk9uVUJjK0E0Nk4xeQo2ZHVOMlQvNFpCVDhaOFcvU2VwekNzaUwrUGdAJCgmJWpOelJSSFRVMllIa0NnWUFYM2NqQUZwYUt3OE5RN1RVZ1crZC8Kb3FiVElxd0d1dGlYbEVKSEcwejFlVjd0NjVnYkUwckI0T0FUaW1aYVlDakN5WEhqRlREY052eGZsVmhRaE5XbAppWnZKTGtZdWVDTVdpVlRMcitjTzVleFNFRWlRaGgrM20=
+kind: Secret
+metadata:
+  name: secret1
+type: Opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-dply
+  # annotations:
+  #   linkerd.io/inject: enabled
+spec:
+  selector:
+    matchLabels:
+      app: auth-app
+  template:
+    metadata:
+      labels:
+        app: auth-app
+    spec:
+      containers:
+      - name: auth-app
+        image: auth-service-img
+        ports:
+          - containerPort: 8000
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: ACCESS_KEY 
+          valueFrom: 
+            secretKeyRef: 
+              name: secret1
+              key: accesskey
+        - name: REFRESH_KEY
+          valueFrom: 
+            secretKeyRef: 
+              name: secret1
+              key: refreshkey
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-app
+  type: ClusterIP
+  ports:
+  - port: 8000
+    name: auth-http
