@@ -1,14 +1,16 @@
-import hashlib
 import os
-import base64
 import jwt
 import logging
-from django.shortcuts import render
+import datetime
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from accounts.serializers import MyUserSerializer
-from kombu import producers,Connection
+from accounts.serializers import MyUserSerializer,MinUserInfo
+from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError
+from accounts.mail import sendmail
+from accounts.models import MyUser
+# from kombu import producers,Connection
 # from accounts.producer import BasicPublisher
 # from datetime import datetime,timedelta
 from authservice.celery import app as celery_app
@@ -16,21 +18,21 @@ from authservice.celery import app as celery_app
 
 access_key = os.environ.get('ACCESS_KEY')
 refresh_key = os.environ.get('REFRESH_KEY')
+max_age_access = 300   ## time in seconds
+max_age_refresh = 600
 # private_key = 'fsfs'
 # public_key = 'dfs'
-connection = Connection('amqp://test:test@rmq:5672//')
+# connection = Connection('amqp://test:test@rmq:5672//') ////used with kombu
 
+logging.basicConfig(level=logging.DEBUG)
 
 @api_view(['GET'])
 def test_get(request):
     if request.method == "GET":
         print('test_gettttttttt')
-
-        # print(request.COOKIES)
-        # print(f"here is the cookie recieved {request.COOKIES.get('test')}")
-        celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
-        celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
-        celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
+        # celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
+        # celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
+        # celery_app.send_task(name='projectservice.celery.debug_task',queue='check') 
         # with producers[connection].acquire(block=True) as producer:                        ##used with kombu to create a producers pool for connection. it will presist throughout the runtime
         #     producer.publish(body='hello from django',headers={'test':'test','task':'task'},routing_key='check',)
 
@@ -62,30 +64,42 @@ def register(request):
         print('post req recieved--reg')
         serializer = MyUserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            print(user.id)
             # celery_app.send_task(name='projectservice.celery.create_user',args=(serializer.data,),queue='authtoproject')       ##decided not to duplicate data. calls will be made from other services to access userdata
             # with producers[connection].acquire(block=True) as producer:                        ##used with kombu to create a producers pool for connection. it will presist throughout the runtime
             #     producer.publish(body={'task':'create_user','data':serializer.data},routing_key='authtomedia',)
-            
-            data ={'data':serializer.data}
-            return Response(data=data,status=status.HTTP_201_CREATED)
+            res = Response(data={},status=status.HTTP_201_CREATED)
+            access_token = gen_token(payload={'user_id': user.id, 'is_staff':user.is_staff},type='access')
+            refresh_token = gen_token(payload={'user_id': user.id, 'is_staff':user.is_staff},type='refresh')
+            res.set_cookie("jwt_access",access_token,max_age=max_age_access,httponly=True,samesite="Strict")
+            res.set_cookie("jwt_refresh",refresh_token,max_age=max_age_refresh,httponly=True,samesite="Strict")
+            return res
         else:
-            return Response(data=serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={'errors':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def login(request):
     if request.method == 'POST':
         print('post req recieved--login')
-        logging.info(request.data)
-        serializer = MyUserSerializer(data=request.data)
-        if serializer.is_valid():
-            print('its valid')
-            res = {'datassss':'datassss'}
-        else:
-            print(serializer.errors)
-            res = serializer.errors
-        print(res)
-        return Response(data=res,status=status.HTTP_200_OK)
+        print(request.COOKIES)
+        email = request.data.get('email')
+        password = request.data.get('password')
+        try:
+            user = authenticate(email = email, password = password)
+            # creating payload and generating tokens
+            payload = {'user_id' : user.id,'is_staff': user.is_staff}
+            access_token = jwt.encode(payload={**payload, 'exp':datetime.datetime.now() + datetime.timedelta(minutes=5)}, algorithm = "HS256", key= access_key)
+            refresh_token = jwt.encode(payload={**payload, 'exp':datetime.datetime.now() + datetime.timedelta(minutes=10)}, algorithm= "HS256", key= refresh_key)
+            response = Response(data={},status=status.HTTP_200_OK)
+            response.set_cookie('jwt_access',access_token,max_age=max_age_access,httponly=True,samesite="Strict")
+            response.set_cookie('jwt_refresh',refresh_token,max_age=max_age_refresh,httponly=True,samesite="Strict")
+            return response
+            # return response
+        except ValidationError as error:
+            logging.info(error.message)
+            return Response(data={'error' : error.message},status=status.HTTP_400_BAD_REQUEST)
+        
 
 @api_view(['POST'])
 def logout(request):
@@ -95,6 +109,51 @@ def logout(request):
         return Response(data='Done!!',status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])               ##must cache user
+def get_user(request):
+    jwt_access = request.COOKIES.get('jwt_access')
+    jwt_refresh = request.COOKIES.get('jwt_refresh')
+    if jwt_access:
+        try:
+            payload = jwt.decode(jwt=jwt_access,key=access_key,algorithms="HS256")
+            user_id = payload.get('user_id')
+            user = MyUser.objects.get(id=user_id)
+            serialized = MinUserInfo(instance=user)
+            return Response(data={'user':serialized.data},status=status.HTTP_200_OK)
+        except:
+            ## check if refresh token is valid
+            try:
+                payload = jwt.decode(jwt=jwt_refresh,key=refresh_key,algorithms="HS256")
+                user_id = payload.get('user_id')
+                user = MyUser.objects.get(id=user_id)
+                serialized = MinUserInfo(instance=user)
+                res = Response(data={'user':serialized.data},status=status.HTTP_200_OK)
+                access_token = gen_token(payload={'user_id':user.id,'is_staff':user.is_staff},type='access')
+                ## setcookie
+                res.set_cookie("jwt_access",access_token,max_age=max_age_access,httponly=True,samesite="Strict")
+                return res
+            except:
+                return Response(data={'user':None},status=status.HTTP_403_FORBIDDEN)
+    if jwt_refresh:
+        # generate access token and return it as a cookie
+        try:
+            payload = jwt.decode(jwt=jwt_refresh,key=refresh_key,algorithms="HS256")
+            user_id = payload.get('user_id')
+            user = MyUser.objects.get(id=user_id)
+            serialized = MinUserInfo(instance=user)
+            res = Response(data={'user':serialized.data},status=status.HTTP_200_OK)
+            access_token = gen_token(payload={'user_id':user.id,'is_staff':user.is_staff},type='access')
+            ## setcookie
+            res.set_cookie("jwt_access",access_token,max_age=max_age_access,httponly=True,samesite="Strict")
+            return res
+        except:
+            return Response(data={'user':None},status=status.HTTP_403_FORBIDDEN)
+    
+    ## if nothing is present return 403 unauthorized and make them login
+    return Response(data={'user':None},status=status.HTTP_403_FORBIDDEN)
 
-def generate_token_pairs(payload):
-    return 10,12
+def gen_token(payload,type):
+    if type == 'access':
+        return jwt.encode(payload={**payload, 'exp':datetime.datetime.now() + datetime.timedelta(seconds=max_age_access)}, algorithm = "HS256", key= access_key)
+    elif type == 'refresh':
+        return jwt.encode(payload={**payload, 'exp':datetime.datetime.now() + datetime.timedelta(seconds=max_age_refresh)}, algorithm= "HS256", key= refresh_key)

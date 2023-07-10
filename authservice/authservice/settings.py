@@ -150,3 +150,6 @@ CSRF_COOKIE_SECURE = False
 
 AUTH_USER_MODEL = 'accounts.MyUser'
 
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.MyAuth',
+]

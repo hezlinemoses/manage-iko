@@ -50,3 +50,6 @@ class MyUser(models.Model):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     objects = MyUserManager()
+
+    def __str__(self) -> str:
+        return self.email

@@ -7,7 +7,7 @@ class MyUserSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True,min_length=8,max_length=128,allow_blank=False)
     class Meta:
         model = MyUser
-        fields = ['username','email','phone','password','password2','is_staff','is_active']
+        fields = ['id','username','email','phone','password','password2','is_staff','is_active']
     
     def validate(self, attrs):
         check_common = CommonPasswordValidator()
@@ -22,3 +22,11 @@ class MyUserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = MyUser.objects.create_user(email=validated_data['email'],password=validated_data['password'],username=validated_data['username'],phone=validated_data['phone'])
         return user
+
+
+
+class MinUserInfo(serializers.ModelSerializer):
+
+    class Meta:
+        model = MyUser
+        fields = ['id','username','email']

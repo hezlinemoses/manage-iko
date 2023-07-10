@@ -24,3 +24,4 @@ sqlparse==0.4.4
 tzdata==2023.3
 vine==5.0.0
 wcwidth==0.2.6
+sib-api-v3-sdk @ git+https://github.com/sendinblue/APIv3-python-library.git@9a5807c149db7855eca346b1d7829a96481f495

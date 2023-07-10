@@ -13,6 +13,7 @@ export const links = () => {
 };
 export const loader = async ({request}) => {
   // console.log('hello from root loaderrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr')
+  console.log('cookie',request.headers.get('Cookie'))
   try{
     let res = await fetch('http://auth-service:8000/accounts/test_get/',{method:"GET",headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
     let cookie = res.headers.get('set-cookie')

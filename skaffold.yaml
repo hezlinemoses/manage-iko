@@ -23,6 +23,8 @@ build:
         manual:
           - src: 'accounts**/*.py'
             dest: .
+          - src: 'authservice**/*.py'
+            dest: .
     # - image: auth-celery
     #   context: authservice
     #   docker:
