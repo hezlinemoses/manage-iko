@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-deployment
+spec:
+  selector:
+    matchLabels:
+      app: project-app
+  template:
+    metadata:
+      labels:
+        app: project-app
+    spec:
+      containers:
+      - name: project-app
+        image: project-service-img
+        ports:
+          - containerPort: 8000
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: project-service
+spec:
+  selector:
+    app: project-app
+  type: ClusterIP
+  ports:
+  - port: 8000
+    name: project-http

@@ -13,17 +13,12 @@ export const links = () => {
 };
 export const loader = async ({request}) => {
   // console.log('hello from root loaderrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr')
-  console.log('cookie',request.headers.get('Cookie'))
+  console.log('home loader function')
   try{
-    let res = await fetch('http://auth-service:8000/accounts/test_get/',{method:"GET",headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
-    let cookie = res.headers.get('set-cookie')
-    console.log('hiii')
-    // console.log(cookie,'cookie m????')
-    return json(await res.json(),{
-      headers:{
-        "Set-cookie": cookie,
-      },
-    })
+    // let res = await fetch('http://project-service:8000/teams/create/',{method:"POST",headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
+    // let headers = res.headers
+    // return json({},{headers:headers})
+    return null
   }catch(e){
     console.log('dfgdfgdgdfgd')
     console.log(e.message)

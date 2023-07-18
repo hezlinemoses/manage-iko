@@ -25,28 +25,29 @@ SECRET_KEY = 'django-insecure-oy_z*@du7b#p2!i1ps_st^0kn$7xkd3d4ms&rl%wi4oxi6+k!l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["project-service"]
 
 CELERY_BROKER_URL = 'amqp://test:test@localhost:5672'
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # 'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.sessions',
+    # 'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'accounts',
+    'rest_framework',
+    'teams',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    # 'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    # 'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # 'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -86,10 +87,10 @@ DATABASES = {
 
         'PASSWORD': 'TxVeQ4nN82SSiYHoswqOURZvQDaL4KpNElsCEEe9bwDxMd73KckIeXzS5cU6LiC2',
 
-        # 'HOST': 'pg-cluster-project-rw',
-        'HOST': 'localhost',
+        'HOST': 'pg-cluster-project-rw',
+        # 'HOST': 'localhost',
 
-        'PORT': '5433',
+        'PORT': '5432',
 
     }
 
@@ -138,9 +139,3 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-CELERY_IMPORTS = [
-    'test.tasks',
-]
-
-AUTH_USER_MODEL = "accounts.MyUser"

@@ -4,7 +4,6 @@ from kombu.common import QoS
 from celery import Celery
 from kombu import Queue,Exchange
 from celery import bootsteps
-from django.apps import apps
 
 
 # Set the default Django settings module for the 'celery' program.
@@ -48,7 +47,6 @@ app.conf.task_queues = [
           queue_arguments={'x-queue-type': 'quorum'}),
 ]
 
-MyUser = apps.get_model('accounts', 'MyUser')
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
@@ -60,5 +58,5 @@ def create_user(self,data):
     if data:
         print(data)
         print(data.get('is_staff'))
-        user = MyUser.objects.create(email=data.get('email'),phone=data.get('phone'),username=data.get('username'),is_staff=data.get('is_staff'),is_active=data.get('is_active'))
-        print(user)
+        # user = MyUser.objects.create(email=data.get('email'),phone=data.get('phone'),username=data.get('username'),is_staff=data.get('is_staff'),is_active=data.get('is_active'))
+        # print(user)

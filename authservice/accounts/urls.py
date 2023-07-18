@@ -5,6 +5,8 @@ from accounts.views import (
     login,
     register,
     logout,
+    check_user_login,
+    get_user,
     )
 
 urlpatterns = [
@@ -13,4 +15,6 @@ urlpatterns = [
     path('login/',login),
     path('logout/',logout),
     path('register/',register),
+    path('checkloginstatus/',check_user_login),
+    path('getcurrentuser/',get_user),
 ]
