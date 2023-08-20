@@ -30,3 +30,9 @@ class MinUserInfo(serializers.ModelSerializer):
     class Meta:
         model = MyUser
         fields = ['id','username']
+
+class UserInfoEmail(serializers.ModelSerializer):
+
+    class Meta:
+        model = MyUser
+        fields = ['id','username','email']

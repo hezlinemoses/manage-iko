@@ -25,6 +25,8 @@ build:
             dest: .
           - src: 'authservice**/*.py'
             dest: .
+          - src: 'celery_restart**/*.py'
+            dest: .
     - image: project-service-img
       context: projectservice
       docker:
@@ -35,13 +37,22 @@ build:
             dest: .
           - src: 'projectservice**/*.py'
             dest: .
-    # - image: auth-celery
-    #   context: authservice
-    #   docker:
-    #     dockerfile: celery.dockerfile
+          - src: 'celery_restart**/*.py'
+            dest: .
+    - image: project-service-consumer-img
+      context: projectservice
+      docker:
+        dockerfile: celery.dockerfile
+      sync:
+        manual:
+          - src: 'teams**/*.py'
+            dest: .
+          - src: 'projectservice**/*.py'
+            dest: .
 manifests:
   rawYaml:
     - infra/k8s/react.yaml
     - infra/k8s/authservice.yaml
     - infra/k8s/projectservice.yaml
+    - infra/k8s/project-service-consumer.yaml
     - infra/k8s/ingress-rule.yaml

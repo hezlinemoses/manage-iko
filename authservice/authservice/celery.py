@@ -3,6 +3,8 @@ from kombu.common import QoS
 from celery import Celery
 from kombu import Queue,Exchange
 from celery import bootsteps
+from celery.worker.control import inspect_command
+
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'authservice.settings')
@@ -18,6 +20,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
 
 
 class NoChannelGlobalQoS(bootsteps.StartStopStep):
@@ -46,3 +49,5 @@ app.conf.task_queues = [
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')
+
+

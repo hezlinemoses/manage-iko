@@ -1,9 +1,9 @@
 import { Form, useActionData,Link } from "@remix-run/react";
-import { authBaseUrl } from "../constants/constants";
+import { authBaseUrl } from "~/constants/constants";
 import {redirect} from "@remix-run/node"
-import stylesUrl from "../styles/tailwind.css"
-import bgImg from "../assets/bg-img.png"
-
+import stylesUrl from "~/styles/tailwind.css"
+import { jwt_refresh_cookie, user_cookie_test } from "~/cookies";
+import { authGetRequest, authPostRequest, responseHeaders } from "~/utils/api";
 export const links = () => {
     return[
         {
@@ -15,19 +15,11 @@ export const links = () => {
 }
 
 export const loader = async({request}) =>{
-  console.log(request.headers.get('Cookie'))
   try {
-    let res = await fetch(authBaseUrl+"/accounts/checkloginstatus",{method:"get",headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
+    let res = await authGetRequest("/accounts/checkloginstatus/",request)
     if(res.status === 200){
         console.log('redirecting')
-        console.log(res.headers.get('set-cookie'),'header from server')
-        if(res.headers.get('set-cookie')!=null){
-          console.log('------')
-            return redirect("/",{
-                headers: res.headers,
-                })
-        }
-        return redirect("/")
+        return redirect("/",{headers:await responseHeaders(res.headers)})
     }
     return null
 } catch (error) {
@@ -37,16 +29,9 @@ export const loader = async({request}) =>{
 export const action = async ({request})=> {
     let data = Object.fromEntries(await request.formData())
     try{
-        // let cookieHeader = request.headers.get('Cookie')
-        // console.log(cookieHeader)
-        // let cookie = await (jwt_access.parse(cookieHeader)) || {};
-        // let list = cookies.split(';')
-        // const csrfCookie = list.find(cookie => cookie.trim().startsWith('csrftoken='));
-        let res = await fetch(authBaseUrl+'/accounts/login/',{method:"post",body:JSON.stringify(data),
-        headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
+        let res = await authPostRequest('/accounts/login/',JSON.stringify(data),request)
         let resData = await res.json()
         if (resData?.error){
-            console.log(resData,'eeeeeee')
             return resData.error
         }
         let url = new URL(request.url)
@@ -56,7 +41,7 @@ export const action = async ({request})=> {
         }
         // if there is no error.. rediredt to home page with the response headers from server which contains jwt cookies.
         return redirect(redirect_str,{
-            headers: res.headers,
+            headers: await responseHeaders(res.headers),
             })
 
         
@@ -64,7 +49,7 @@ export const action = async ({request})=> {
         return "Service unavailable"
     }
 }
-export default function LoginRoute(){
+export default function Screen(){
     let error = useActionData()
     console.log(error,'action data/error')
     // console.log('action data',data)
@@ -126,7 +111,7 @@ export default function LoginRoute(){
           <p className="mt-10 text-center text-sm text-gray-500">
             Not a member?{' '}
             <span className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
-                <Link to={'/register'}>
+                <Link to={'/signup'}>
               Signup
                 </Link>
             </span>

@@ -25,9 +25,10 @@ SECRET_KEY = 'django-insecure-oy_z*@du7b#p2!i1ps_st^0kn$7xkd3d4ms&rl%wi4oxi6+k!l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["project-service"]
+# ALLOWED_HOSTS = ["project-service"]
+ALLOWED_HOSTS = ["*"]
 
-CELERY_BROKER_URL = 'amqp://test:test@localhost:5672'
+CELERY_BROKER_URL = 'amqp://test:test@rmq:5672'
 # Application definition
 
 INSTALLED_APPS = [

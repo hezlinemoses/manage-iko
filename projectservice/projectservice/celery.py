@@ -1,12 +1,18 @@
 import os
 import django
+import logging
+from django.apps import apps
 from kombu.common import QoS
-from celery import Celery
+from celery import Celery,app
 from kombu import Queue,Exchange
 from celery import bootsteps
-
-
+from celery.worker.control import inspect_command,control_command
+from celery import app
+from projectservice.mail import send_team_invite
+from sib_api_v3_sdk.rest import ApiException
+from urllib3.exceptions import MaxRetryError
 # Set the default Django settings module for the 'celery' program.
+logging.basicConfig(level=logging.DEBUG)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'projectservice.settings')
 django.setup()
@@ -28,15 +34,10 @@ class NoChannelGlobalQoS(bootsteps.StartStopStep):
 
     def start(self, c):
         qos_global = False
-
+        c.initial_prefetch_count = 5  ### this is usually num.of.cores*4. im using this to limit prefetch to 5
         c.connection.default_channel.basic_qos(0, c.initial_prefetch_count, qos_global)
-        def set_prefetch_count(prefetch_count):
-            return c.task_consumer.qos(
-                prefetch_count=prefetch_count,
-                apply_global=qos_global,
-            )
-        c.qos = QoS(set_prefetch_count, c.initial_prefetch_count)
-
+        c.qos = QoS(c.task_consumer.qos, c.initial_prefetch_count) ## dont change first argument.
+app.conf.update(task_acks_late=True) ## will send acknowledgment message after exicuting task.
 app.steps['consumer'].add(NoChannelGlobalQoS)
 
 
@@ -48,15 +49,21 @@ app.conf.task_queues = [
 ]
 
 
+##initializing models.
+Team = apps.get_model(app_label='teams',model_name='Team')
+TeamMember = apps.get_model(app_label='teams',model_name='TeamMember')
+UserInfo = apps.get_model(app_label='teams',model_name='UserInfo')
+
 @app.task(bind=True, ignore_result=True)
-def debug_task(self):
-    print('heloooooooooooooooooo')
+def send_invite_mail(self,username,email,team_mem_id,team_name):
+    try:
+        send_team_invite(username=username,email=email,team_mem_id=team_mem_id,team_name=team_name)
+        team_member = TeamMember.objects.get(id=team_mem_id)
+        team_member.is_invited=True
+        team_member.save()
+    except ApiException as e:
+        logging.error("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
+    except MaxRetryError as e:
+        logging.error("Something wrong with connection!")
+    
 
-
-@app.task(bind=True,ignore_result=True)
-def create_user(self,data):
-    if data:
-        print(data)
-        print(data.get('is_staff'))
-        # user = MyUser.objects.create(email=data.get('email'),phone=data.get('phone'),username=data.get('username'),is_staff=data.get('is_staff'),is_active=data.get('is_active'))
-        # print(user)

@@ -26,9 +26,11 @@ SECRET_KEY = 'django-insecure-(n=jpqvep8k$k_$7h0k+0bu-z_%b5gptx2fas1gny+f%6h(#sp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['auth-service','auth-service.authspace']
+# ALLOWED_HOSTS = ['auth-service','auth-service.authspace']
+ALLOWED_HOSTS = ['*']
 
 # Celery settings
+CELERY_IMPORTS = ('projectservice.celery')
 
 CELERY_BROKER_URL = 'amqp://test:test@rmq'
 
@@ -42,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     #----------My apps-------------
-    # 'corsheaders',
+    'corsheaders',
     'rest_framework',
     'accounts',
 ]
@@ -153,3 +155,5 @@ AUTH_USER_MODEL = 'accounts.MyUser'
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.MyAuth',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True

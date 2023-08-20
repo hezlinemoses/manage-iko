@@ -11,13 +11,12 @@ configuration.api_key['api-key'] = 'xkeysib-7416cda52b76c297b77090b7a0bfb20441fd
 api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
 
-def sendmail():
+def send_team_invite(user,team_id,team_name):
     subject = "Manage-iko Team Invitation"
-    sender = {"name":"Manage-iko admin","email":"contact@contact.com"}
+    sender = {"name":"Manage-iko admin","email":"contact@manage-iko.online"}
     # replyTo = {"name":"Sendinblue","email":"contact@sendinblue.com"}
-    html_content = "<html><body><h1>This is my first transactional email </h1></body></html>"
-    to = [{"email":"shawk.000@gmail.com","name":"hezline"}]
-    params = {"parameter":"My param value","subject":"New Subject"}
+    html_content = f"<html><body><h1>Hey, you've been invite to team,{team_name}.  </h1><br> To join follow the link <a href='http://localhost/teams/invited/?team_id={team_id}&team_name={team_name}' target='_blank'>Click here to open in a new tab</a></body></html>"
+    to = [{"email":user.email,"name":user.username}]
     send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to,html_content=html_content, sender=sender, subject=subject)
     try:
         api_response = api_instance.send_transac_email(send_smtp_email, async_req=True)  ##remove async_req to call fn in syn mode

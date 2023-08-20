@@ -1,9 +1,8 @@
-import stylesUrl from "../styles/tailwind.css"
-import bgImg from "../assets/bg-img.png"
+import stylesUrl from "~/styles/tailwind.css"
+import bgImg from "~/assets/bg-img.png"
 import { Form, Link, useActionData } from "@remix-run/react"
-import { authBaseUrl } from "../constants/constants";
 import { redirect } from "react-router";
-import {signupSchema} from "../validator/signupValidate"
+import { authGetRequest, authPostRequest, responseHeaders } from "~/utils/api";
 export const links = () => {
     return[
         {
@@ -17,16 +16,11 @@ export const links = () => {
 export const loader = async({request}) =>{
     console.log(request.headers.get('Cookie'))
     try {
-        let res = await fetch(authBaseUrl+"/accounts/checkloginstatus",{method:"get",headers:{'Cookie':request.headers.get('Cookie'),'Content-Type': 'application/json'}})
+        let res = await authGetRequest("/accounts/checkloginstatus/",request);
         if(res.status === 200){
-            console.log('redirecting to home')
-            console.log(res.headers.get('set-cookie'),'header from server')
-            if(res.headers.get('set-cookie')!=null){
-                return redirect("/",{
-                    headers: res.headers,
-                    })
-            }
-            return redirect("/")
+            let cookies = res.headers.get('set-cookie')
+            let headers = cookies!=null ? {'set-cookie':cookies} : {}
+            return redirect("/",{headers:headers})
         }
         return null
     } catch (error) {
@@ -37,33 +31,15 @@ export const loader = async({request}) =>{
 export const action = async ({request}) => {
     console.log('innside action')
     let data = Object.fromEntries(await request.formData())
-    // validate data
-    // try{
-    //     let {err, val} = await signupSchema.validateAsync({
-    //         username : data.username,
-    //         email : data.email,
-    //         phone : data.phone,
-    //         password : data.password,
-    //     })
-    //     console.log(validate,'validated')
-    //     return null
-    // }catch(err){
-    //     let errors = err.message.split('.')
-    //     for (let x of err.details){
-    //         console.log(x)
-    //     }
-    //     console.log(err.details[0].path[0])
-    //     return null
-    // }
     try{
-        let res = await fetch(authBaseUrl+"/accounts/register/",{method:"post",body:JSON.stringify(data),headers:{'Cookie':request.headers.get('Cookie'),'Content-Type':'application/json'}})
+        let res = await authPostRequest("/accounts/register/",JSON.stringify(data),request)
         console.log('res from server')
         let resdata = await res.json()
         if(resdata?.errors){
             return resdata.errors
         }
         return redirect("/",{
-            headers: res.headers,
+            headers: await responseHeaders(res.headers),
             })
         
     }catch{
@@ -72,7 +48,7 @@ export const action = async ({request}) => {
     
 }
 
-export default function RegisterRoute(){
+export default function Screen(){
     let errors = useActionData()
     console.log('action data',errors)
     return(
@@ -81,7 +57,7 @@ export default function RegisterRoute(){
             <div className="flex w-full sm:w-2/3 p-2 sm:p-0 bg-slate-100 rounded-md shadow-md">
                 <div className="font-serif w-screen h-screen hidden md:block bg-slate-100"> <img className="object-cover h-screen py-10" src={bgImg} alt="" /> </div>
                 <div className="w-screen h-full md:w-screen md:h-1/2 pt-4" >
-                    <h2 className="font-sans font-extrabold pl-10 mb-2">Register</h2>
+                    <h2 className="font-sans font-extrabold pl-10 mb-2">Signup</h2>
                     <Form method="POST" className="w-full p-10 pt-0" >
                         <div className="mb-6">
                             <label className="block mb-2 text-sm font-medium text-gray-900">Username</label>
