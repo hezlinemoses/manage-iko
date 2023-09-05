@@ -28,4 +28,9 @@ class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamMember
         fields =['team','user']
+
+class TMSUser(serializers.ModelSerializer):
+    class Meta:
+        model = TeamMember
+        fields = ["user"]
     

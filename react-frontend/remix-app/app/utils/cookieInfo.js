@@ -1,9 +1,5 @@
 import {remixEncode,user_cookie } from "../cookies"
 
 export const getUserFromCookie = async(request)=>{
-    let userCookie = await user_cookie.parse(request.headers.get('Cookie')) //remixEncode fn passed here
-    if (userCookie == null){
-        return null
-    }
-    return userCookie
+return await user_cookie.parse(request.headers.get('Cookie'))//remixEncode fn passed here, not anymore as this is a cookie set by remix.
 }

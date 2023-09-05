@@ -20,13 +20,10 @@ export const headers = ({loaderHeaders})=>{
 
 export const loader = async ({request}) => {
   console.log('home loader function')
-  let jwtPresent = await checkJwtCookies(request)
-  if (!jwtPresent){
+  if (!await checkJwtCookies(request)){
     return redirect("/login")
   }
 
-
-  let user = await getUserFromCookie(request)
   return null
   return json({},{headers:{
     "Set-Cookie": await user_cookie.serialize("hezline")
@@ -69,3 +66,4 @@ export default function IndexRoute() {
     </div>
   );
 }
+

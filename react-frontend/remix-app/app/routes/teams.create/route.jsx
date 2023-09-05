@@ -4,22 +4,22 @@ import { Form, useActionData, useLoaderData, useNavigate, useSubmit } from "@rem
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import { useState } from "react";
-import { getUserFromCookie } from "~/utils/cookieInfo";
 import { authGetRequest, projectPostRequest, responseHeaders } from "~/utils/api";
+import { checkJwtCookies } from "../../utils/cookieCheck";
+import { user_cookie } from "../../cookies";
 
 
 export const loader = async({request})=> {
-  let user = await getUserFromCookie(request)
-  if(!user){
-    return redirect("/login?redirect=/teams/create")
+  if (!await checkJwtCookies(request)){
+    return redirect("/login?redirect=/teams/create/")
   }
+    let user = await user_cookie.parse(request.headers.get('Cookie'))
     let url = new URL(request.url)
     let searchQ = url.searchParams.get("q")
-    console.log(user,'user from cookieeeeeeeee')
     if(searchQ){
       try {
         let res = await authGetRequest(`/accounts/userlist/?search=${searchQ}`,request)
-        if (res.status == 401 || res.status == 403){
+        if (res.status == 401){
           return redirect("/login?redirect=/teams/create")
         }
         let data = await res.json()
@@ -27,7 +27,6 @@ export const loader = async({request})=> {
         return json(data,{headers:await responseHeaders(res.headers)})
 
       } catch (error) {
-        console.log(error,'errrorrrrrrrrrrrrrrrrrrrr')
         return redirect("/login?redirect=/teams/create")
       }
     }
@@ -38,14 +37,14 @@ export const action = async ({request})=>{
     let data = Object.fromEntries(await request.formData())
     try{
         let res = await projectPostRequest('/teams/create/',JSON.stringify(data),request) 
-        if (res.status === 401 || res.status ===403){
+        if (res.status === 401){
             return redirect("/login?redirect=/teams/create")
         }
         let resData = await res.json()
         if (res.status === 400){
           return json(resData,{headers:await responseHeaders(res.headers)})
         }
-        return json(resData,{headers: await responseHeaders(res.headers)}) // this should be a redirect to team detail
+        return redirect(`/teams/${resData.team_id}/`) // this should be a redirect to team detail
         
    }catch(err){
     console.log('error',err)
@@ -53,7 +52,7 @@ export const action = async ({request})=>{
    }
 }
 export default function Screen(){
-    let data = useActionData()
+    let actionData = useActionData()
     let {users} = useLoaderData()
     let {currentUserId} = useLoaderData()
     let filteredUsers = []
@@ -69,7 +68,6 @@ export default function Screen(){
         e.preventDefault()
         let formData = new FormData(e.target)
         formData.append("user_ids",Array.from(selected.keys()))
-        console.log(formData,'aaaaaaaaaaaaaaaaaaaaaaaaa')
         submit(formData,{method:"POST"})
     }
     let handleAutocompleteChange = (event, newValue, reason) => {
@@ -91,7 +89,6 @@ export default function Screen(){
     function closeModel() {
       navigate("/teams")
     }
-    // return (<> <button onClick={handleSearch}>fff</button></>)
     return (
         <div>
 
@@ -120,6 +117,8 @@ export default function Screen(){
                             <div className="relative z-0 w-full mb-6 group">
                                 <input type="text" name="name" id="name" className="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
                                 <label htmlFor="name" className="peer-focus:font-medium absolute text-sm text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Team name</label>
+                                {actionData?.name && <p className=" text-sm text-red-600">{actionData.name}</p>}
+                                {actionData?.error && <p className=" text-sm text-red-600">{actionData.error}</p>}
                             </div>
                             {/* <hr className="h-px my-8 bg-gray-200 border-0"></hr> */}
                             <h3 className=" text-lg font-semibold text-gray-700 mb-3">Invite members</h3>

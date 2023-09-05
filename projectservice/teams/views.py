@@ -35,7 +35,7 @@ def create_team(request):
         auth_base_url+ f"/accounts/getcurrentuser/",
         headers= forwarded_headers(reqheaders=request.headers)
         )
-    if auth_req.status_code == 401 or auth_req.status_code == 403:
+    if auth_req.status_code == 401:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
     data = auth_req.json()
     current_user = data.get('current_user') ##from auth service
@@ -44,7 +44,7 @@ def create_team(request):
 
     if Team.objects.filter(owner=owner,name=request.data.get('name')).exists():
         res = Response(data={'error':'A team with same name already exists'},status=status.HTTP_400_BAD_REQUEST)
-        res = add_auth_headers(auth_res_header=auth_req,res_to_return=res)
+        res = add_auth_headers(auth_res_header=auth_req.headers,res_to_return=res)
         return res ## error instant return
     
     team_serializer = TeamSerializer(data={'name':request.data.get('name'),'owner':owner.user_id})
@@ -52,11 +52,15 @@ def create_team(request):
         team = team_serializer.save()
         if members:
             for member in members:
-                team = Team.objects.get(id=team.id)
+                # team = Team.objects.get(id=team.id)
                 user,_ = UserInfo.objects.get_or_create(user_id=member.get('id'))
                 team_member = TeamMember.objects.create(team=team,user=user)
                 try:
-                    celery_app.send_task(name='projectservice.celery.send_invite_mail',queue='check',args=(member.get('username'),member.get('email'),team_member.id,team.name))
+                    celery_app.send_task(
+                        name='projectservice.celery.send_invite_mail',
+                        queue='check',
+                        args=(member.get('username'),member.get('email'),team_member.id,team.name)
+                        )
                     team_member.is_invited = True
                     team_member.save()
                     ## res will be returned at the end of code
@@ -65,26 +69,14 @@ def create_team(request):
                     # res = Response(data={'message':'Please re-invite members'},status=status.HTTP_200_OK)
                     # res = add_auth_headers(auth_res_header=auth_req,res_to_return=res)
                     # return res ## error instan
-        res = Response(data={},status=status.HTTP_201_CREATED)
+        res = Response(data={'team_id':team.id},status=status.HTTP_201_CREATED)
     else:
         res =  Response(data=team_serializer.errors,status=status.HTTP_400_BAD_REQUEST)
 
     res = add_auth_headers(auth_res_header=auth_req.headers,res_to_return=res)
     return res
     
-    
-    
-    
-@api_view(["GET"])
-def list_user_teams(request):
-    '''View to retrive the list of teams a user is a member/owner'''
-    # r = requests.get("http://auth-service:8000/accounts/getcurrentuser",cookies=request.COOKIES) /// we will get current user and data from single endpoint.
-    r = requests.get()
-    print(r.content)
-    res = Response(data={},status=status.HTTP_200_OK)
-    if r.headers.get('Set-Cookie'):
-        res["set-cookie"]=r.headers.get('Set-Cookie')
-    return res
+
 
 @api_view(["GET"])
 def check_invite_link(request):
@@ -92,7 +84,7 @@ def check_invite_link(request):
         auth_base_url+ f"/accounts/getcurrentuser/",
         headers= forwarded_headers(reqheaders=request.headers)
         )
-    if get_current_user.status_code == 401 or get_current_user.status_code == 403:
+    if get_current_user.status_code == 401:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
         
     data = get_current_user.json()
@@ -109,7 +101,7 @@ def check_invite_link(request):
 @api_view(["POST"])
 def inv_accept_reject(request):
     get_current_user = requests.get(auth_base_url+ f"/accounts/getcurrentuser/",headers=forwarded_headers(reqheaders=request.headers))
-    if get_current_user.status_code == 401 or get_current_user.status_code == 403:
+    if get_current_user.status_code == 401:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
     data = get_current_user.json()
     current_user = data.get('current_user')
@@ -138,8 +130,8 @@ def inv_accept_reject(request):
 def team_list_view(request):
     ## return team list of current user, owned and is currently a member of
     get_current_user = requests.get(auth_base_url+ f"/accounts/getcurrentuser/",headers=forwarded_headers(reqheaders=request.headers))
-    if get_current_user.status_code == 401 or get_current_user.status_code == 403:
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+    if get_current_user.status_code == 401:
+        return Response(data={},status=status.HTTP_401_UNAUTHORIZED)
     auth_data = get_current_user.json()
     current_user = auth_data.get('current_user')
     user = UserInfo.objects.get(user_id=current_user.get('id'))
@@ -150,4 +142,43 @@ def team_list_view(request):
     res = Response(data={'owned_teams':serialized_owned_teams.data,'joined_teams':serialized_joined_teams.data},status=status.HTTP_200_OK)
     res = add_auth_headers(auth_res_header=get_current_user.headers,res_to_return=res)
     return res
+
+@api_view(["GET"])
+def team_detail_view(request,id):
+    get_current_user = requests.get(auth_base_url+ f"/accounts/getcurrentuser/",headers=forwarded_headers(reqheaders=request.headers))
+    if get_current_user.status_code == 401 :
+        return Response(data={},status=status.HTTP_401_UNAUTHORIZED)
+    current_user_id = get_current_user.json().get('current_user').get('id')
+    try:
+        team = Team.objects.get(id=id)
+    except:
+        return Response(data={},status=status.HTTP_400_BAD_REQUEST)
+    # checking if current user is owner/member of team
+    if team.owner_id != current_user_id and not team.team_member.filter(is_active=True,user_id=current_user_id).exists():
+        return Response(data={},status=status.HTTP_403_FORBIDDEN)
+    team_members = team.team_member.filter(is_active=True).values_list("user_id","is_admin") ## we get a list of tuple (id,is_admin)--> (1,False)
+    team_member_id_list = ",".join(str(member[0]) for member in team_members) if(team_members) else "" ## list of id's
+    get_info = requests.get(
+        auth_base_url+f'/accounts/team_members_list/?owner_id={team.owner_id}&member_ids={team_member_id_list}',
+        headers=forwarded_headers(reqheaders=request.headers),
+        )
+    data = get_info.json()
+    member_role_dict = {member[0]:member[1] for member in team_members} ## creating a dict for easier access
+    members = data.get('members')
+    if current_user_id == team.owner_id:
+        role = "owner"
+    else:
+        role = "staff" if(member_role_dict.get(current_user_id)) else "member" 
+    if members:
+        for member in members:
+            member["is_admin"] = member_role_dict.get(member.get('id'),False)
+    owner = data.get('owner')
+    owner['role'] = 'owner'
+    res = Response(data={'members':members,'owner':owner,'current_role':role},status=status.HTTP_200_OK)
+    res = add_auth_headers(auth_res_header=get_info.headers,res_to_return=res)
+    return res
+
+
+@api_view(["POST"])
+def team_edit_view(request):
     pass

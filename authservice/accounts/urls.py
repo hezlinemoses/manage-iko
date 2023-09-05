@@ -7,7 +7,8 @@ from accounts.views import (
     logout,
     check_user_login,
     get_user,
-    user_list
+    user_list,
+    team_members_list,
     )
 
 urlpatterns = [
@@ -19,4 +20,5 @@ urlpatterns = [
     path('checkloginstatus/',check_user_login),
     path('getcurrentuser/',get_user),
     path('userlist/',user_list),
+    path('team_members_list/',team_members_list),
 ]

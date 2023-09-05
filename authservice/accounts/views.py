@@ -115,12 +115,14 @@ def get_user(request):
 def check_user_login(request):
     jwt_validated = validate_jwt(request=request)
     if jwt_validated:
+        current_user = jwt_validated.get('current_user')
+        print(current_user,'-----------')
         res = Response(data={},status=status.HTTP_200_OK)
         if(jwt_validated.get('access_token')):
             # print(jwt_validated.get('access_token'))
 
             res["set-jwt-access"] = jwt_validated.get('access_token')
-
+            res["set-user"] = json.dumps({'id':current_user["id"],'username':current_user["username"]})
         return res
     else:
         return Response(data={'user':None},status=status.HTTP_401_UNAUTHORIZED)
@@ -131,10 +133,25 @@ def user_list(request):
     #check jwt
     jwt_validated = validate_jwt(request=request)
     if jwt_validated:
+        # member_ids = request.GET.get('member_ids')
+        # owner_id = request.GET.get('owner_id')
+        # if member_ids or owner_id:
+        #     if member_ids:
+        #         member_ids_array = [int(mem_id) for mem_id in member_ids.split(',')]
+        #         members = MyUser.objects.filter(id__in=member_ids_array)
+        #         members_serialized = MinUserInfo(instance=members,many=True)
+        #     owner = MyUser.objects.get(id=owner_id)
+        #     owner_serialized = MinUserInfo(instance=owner)
+        #     res = Response(
+        #         data={"current_user":current_user,'members':members_serialized.data if(member_ids) else "",'owner':owner_serialized.data},
+        #         status=status.HTTP_200_OK,
+        #         )
+        #     if jwt_validated.get("access_token"):
+        #         res["set-jwt-access"] = jwt_validated.get('access_token')
+        #     return res
         ##get current user and return it too
         current_user = jwt_validated.get('current_user')
         user_ids : str = request.GET.get('user_ids')
-        print(user_ids,'000000000000')
         if user_ids:  ## this is when project service, team invite(requires email)
             str_array = user_ids.split(',')
             int_array = [int(item) for item in str_array]
@@ -155,6 +172,24 @@ def user_list(request):
         return res
     else:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(["GET"])
+def team_members_list(request):
+    # not checking for jwt in this case cuz 
+    member_ids = request.GET.get('member_ids')
+    owner_id = request.GET.get('owner_id')
+    if member_ids:
+        member_ids_array = [int(mem_id) for mem_id in member_ids.split(',')]
+        members = MyUser.objects.filter(id__in=member_ids_array)
+        members_serialized = MinUserInfo(instance=members,many=True)
+    owner = MyUser.objects.get(id=owner_id)
+    owner_serialized = MinUserInfo(instance=owner)
+    return Response(
+        data={'members':members_serialized.data if(member_ids) else "",'owner':owner_serialized.data},
+        status=status.HTTP_200_OK,
+        )
+
 
 def gen_token(payload,type):
     if type == 'access':

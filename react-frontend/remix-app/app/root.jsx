@@ -1,7 +1,10 @@
-import { Outlet, Links, Scripts, useLoaderData } from "@remix-run/react";
+import { Outlet, Links, Scripts, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import styles from './styles/tailwind.css'
 import NavBar from "./components/NavBar";
-import { user_cookie } from "./cookies";
+import { jwt_access_cookie, jwt_refresh_cookie, user_cookie } from "./cookies";
+import { json, redirect } from "@remix-run/node";
+import { ErrorBoundaryContent } from "./utils/errorboundary";
+import { checkJwtCookies } from "./utils/cookieCheck";
 
 
 export const links = ()=>[
@@ -21,9 +24,13 @@ export const links = ()=>[
 // }
 export const loader = async ({request})=>{
   // dont redirect from this route to login.... login have to load this route first.
- 
-    let user = await user_cookie.parse(request.headers.get('Cookie'))
-    console.log('root loader fn')
+  let user;
+    if (! await checkJwtCookies(request)){
+      user = null;
+      return user
+    }
+    user = await user_cookie.parse(request.headers.get('Cookie'))
+    console.log('root loader fn',user)
     return user
 }
 
@@ -31,7 +38,11 @@ export const action = async ({request})=>{
   let formData = await request.formData()
   let {_action,...values} = Object.fromEntries(formData)
   if (_action === "logout"){
-    alert('dfdgfdg')
+    let headers = new Headers()
+    headers.append('Set-Cookie', await jwt_access_cookie.serialize("",{maxAge:0}))
+    headers.append('Set-Cookie', await jwt_refresh_cookie.serialize("",{maxAge:0}))
+    headers.append('Set-Cookie', await user_cookie.serialize("",{maxAge:0}))
+    return json({},{headers:headers})
     // return json({},{headers:{'set-cookie':"jwt-acces"}})
   } 
   return null
@@ -39,7 +50,6 @@ export const action = async ({request})=>{
 
 export default function App() {
   let loadUser = useLoaderData()
-  console.log('userrrrrrrrrrrrrr',loadUser)
   return (
     <html lang="en">
       <head>
@@ -56,12 +66,12 @@ export default function App() {
         <header className="h-24">
           <NavBar user={loadUser}/>
         </header>
-        <section>
+        <section className=" px-2 lg:px-32">
         
+        <Outlet/>
         </section>
         <Scripts/>
         {/* Hello world */}
-        <Outlet/>
         {/* <LiveReload port={80} /> */}
       </body>
     </html>
@@ -69,3 +79,7 @@ export default function App() {
 }
 
 
+export function ErrorBoundary() {
+  const error = useRouteError();
+  return ErrorBoundaryContent(error)
+}

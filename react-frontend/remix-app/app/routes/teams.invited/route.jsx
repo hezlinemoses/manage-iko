@@ -6,9 +6,13 @@ export const loader = async ({request})=>{
     let url = new URL(request.url);
     let team_mem_id = url.searchParams.get('team_mem_id')
     let team_name = url.searchParams.get('team_name')
+    
+    if (!await checkJwtCookies(request)){
+        return redirect(`/login?redirect=/teams/invited?team_mem_id=${team_mem_id}`)
+      }
 
     let res = await projectGetRequest(`/teams/check_invite_link/?team_member_id=${team_mem_id}`,request) 
-    if (res.status == 401 || res.status==403){
+    if (res.status == 401){
         return redirect(`/login?redirect=/teams/invited?team_mem_id=${team_mem_id}`,)
     }
     if (res.status === 400){
@@ -22,7 +26,7 @@ export const action = async ({request})=>{
     let body = JSON.stringify(Object.fromEntries(formData))
     // let {_action,...values} = Object.fromEntries(formData) no need of this since server will be handling it
     let res = await projectPostRequest("/teams/inv_accept_reject/",body,request)
-    if (res.status == 401 || res.status==403){
+    if (res.status == 401){
         return redirect("/login")
     }
     if (res.status === 400){

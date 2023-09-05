@@ -33,3 +33,4 @@ class TeamMember(models.Model):  ##for inviting/reinviting/kicking/ to kick just
         constraints = [
             models.UniqueConstraint(fields=['team', 'user'], name='unique_team_member')
         ]
+    
